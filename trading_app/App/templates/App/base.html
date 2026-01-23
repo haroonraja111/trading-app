@@ -1,0 +1,47 @@
+{% load static %}
+{# Base.html #}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>{% block title %}Portfolio Dashboard{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{% static 'Base/css/base.css' %}">
+
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="dashboard-container">
+    <!-- Navigation bar for quick actions and navigation between major pages -->
+    <div class="mt-5 mb-2">
+        <nav class="custom-nav" aria-label="App navigation">
+            <a href="{% url 'portfolio_dashboard' %}">Dashboard</a>
+            <span class="custom-nav-sep">|</span>
+            <a href="{% url 'trade_add' %}">Add Trade</a>
+            <span class="custom-nav-sep">|</span>
+            <a href="{% url 'stock_add' %}">Add Stock</a>
+            <span class="custom-nav-sep">|</span>
+            <a href="{% url 'trade_list' %}">Trades</a>
+            <span class="custom-nav-sep">|</span>
+            <a href="{% url 'stock_list' %}">Stocks</a>
+        </nav>
+    </div>
+
+    <hr class="mb-4">
+
+ 
+    {% block content %}{% endblock %}
+
+</div>
+<!-- Bootstrap bundle JS (for general UI components) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+{% block extra_body %}{% endblock %}
+</body>
+</html>

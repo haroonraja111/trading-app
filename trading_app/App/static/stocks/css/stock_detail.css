@@ -1,0 +1,48 @@
+.stock-detail-container {
+    /* max-width: 100vw; */
+    margin: 40px auto;
+    padding: 32px 32px 24px 32px;
+    background-color: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px 0 rgba(36,44,72,0.11), 0 1.5px 4px 0 rgba(0,0,0,0.06);
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.stock-detail-container h3 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #23395d;
+    margin-bottom: 24px;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.stock-details-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.stock-details-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f2f8;
+    font-size: 1.1rem;
+}
+
+.stock-details-list li:last-child {
+    border-bottom: none;
+}
+
+.stock-detail-label {
+    color: #8592ad;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+.stock-detail-value {
+    color: #253771;
+    font-weight: 600;
+}

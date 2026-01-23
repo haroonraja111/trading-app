@@ -1,0 +1,305 @@
+{% extends "App/base.html" %}
+{% load static %}
+{% comment %} dashboard.html {% endcomment %}
+{% block title %}Portfolio Dashboard{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
+
+<div class="dashboard-container">
+    <h2 class="mb-4">{{ user_name|capfirst }}'s Portfolio Dashboard</h2>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="summary-card bg-pastel-blue">
+                <div class="stat-label">Total Cost</div>
+                <div class="stat-value">Rs. {{ total_cost|floatformat:2 }}</div>
+                <div class="stat-sub">Amount invested</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card bg-pastel-purple">
+                <div class="stat-label">Current Value</div>
+                <div class="stat-value" id="dashboard-total-value">Rs. {{ total_value|floatformat:2 }}</div>
+                <div class="stat-sub">Market value</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card {% if unrealized_pl >= 0 %}bg-pastel-green{% else %}bg-pastel-red{% endif %}" id="dashboard-pl-card">
+                <div class="stat-label">Unrealized P/L</div>
+                <div class="stat-value {% if unrealized_pl >= 0 %}text-success-custom{% else %}text-danger{% endif %}" id="dashboard-unrealized-pl" style="font-size:20px;margin: 8px 0">
+                    Rs. {{ unrealized_pl|floatformat:2 }}
+                </div>
+                <div class="stat-sub {% if unrealized_pl >= 0 %}text-success-custom{% else %}text-danger{% endif %}" id="dashboard-pl-percentage">
+                    {{ pl_percentage }}%
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card bg-pastel-purple">
+                <div class="stat-label">Active Positions</div>
+                <div class="stat-value">{{ active_trades }}</div>
+                <div class="stat-sub">Open trades</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtering and Sorting Section -->
+    <div class="filter-section">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label for="stock">Filter by Stock Symbol:</label>
+                <input type="text" class="form-control" id="stock" name="stock" value="{{ stock_filter }}" placeholder="Enter symbol...">
+            </div>
+            <div class="filter-group">
+                <label for="sort">Sort By:</label>
+                <select class="form-select" id="sort" name="sort">
+                    <option value="symbol" {% if sort_by == 'symbol' %}selected{% endif %}>Stock Symbol</option>
+                    <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Buy Date (Recent First)</option>
+                    <option value="profit" {% if sort_by == 'profit' %}selected{% endif %}>Profit (Highest First)</option>
+                    <option value="loss" {% if sort_by == 'loss' %}selected{% endif %}>Loss (Lowest First)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+            <div class="filter-group">
+                <a href="{% url 'portfolio_dashboard' %}" class="btn btn-secondary w-100">Clear Filters</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Holdings Table -->
+    <div class="portfolio-table-container">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>
+                        <a href="?sort=symbol{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="sort-link" style="color: rgb(10,3,3);">
+                            Stock
+                        </a>
+                    </th>
+                    <th>Quantity</th>
+                    <th>Buy Price</th>
+                    <th>Current Price</th>
+                    <th>Total Cost</th>
+                    <th>Current Value</th>
+                    <th>
+                        <a href="?sort={% if sort_by == 'profit' %}loss{% else %}profit{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="sort-link" style="color: rgb(10,3,3);">
+                            Unrealized P/L
+                        </a>
+                    </th>
+                    <th>P/L %</th>
+                    <th>
+                        <a href="?sort=date{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="sort-link" style="color: rgb(10,3,3);">
+                            Buy Date
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for holding in holdings %}
+                <tr data-trades-id="{{ holding.pk }}" data-stock-id="{{ holding.stock.pk }}" data-quantity="{{ holding.quantity }}" data-buying-price="{{ holding.buying_price }}" data-total-cost="{{ holding.total_cost }}">
+                    <td><strong>{{ holding.stock.symbol }}</strong></td>
+                    <td>{{ holding.quantity }}</td>
+                    <td>Rs. {{ holding.buying_price|floatformat:2 }}</td>
+                    <td class="price-field" data-field="current_price">
+                        {% if holding.stock.current_price %}
+                            Rs. {{ holding.stock.current_price|floatformat:2 }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>Rs. {{ holding.total_cost|floatformat:2 }}</td>
+                    <td class="price-field" data-field="current_value">
+                        {% if holding.current_value %}
+                            Rs. {{ holding.current_value|floatformat:2 }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td class="price-field" data-field="unrealized_pl">
+                        {% if holding.unrealized_pl is not None %}
+                            <span class="{% if holding.unrealized_pl >= 0 %}pl-positive{% else %}pl-negative{% endif %}">
+                                Rs. {{ holding.unrealized_pl|floatformat:2 }}
+                            </span>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td class="price-field" data-field="pl_percent">
+                        {% if holding.unrealized_pl is not None %}
+                            <span class="{% if holding.unrealized_pl >= 0 %}pl-positive{% else %}pl-negative{% endif %}">
+                                {{ holding.pl_percent }}%
+                            </span>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>{{ holding.buy_date|date:"Y-m-d" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        No holdings found. {% if stock_filter %}Try adjusting your filters.{% else %}Start by adding a trade!{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Wait for the DOM to be fully loaded before executing script
+    document.addEventListener('DOMContentLoaded', function () {
+        // Variable to store interval ID for periodic refresh
+        let refreshInterval = null;
+        // Flag to prevent multiple simultaneous refreshes
+        let isRefreshing = false;
+    
+        // Calculates portfolio totals by summing rows for total cost and current value
+        function calculatePortfolioTotals() {
+            let totalCost = 0;     // Accumulates the purchase cost for all positions
+            let totalValue = 0;    // Accumulates the current market value for all positions
+    
+            // Iterate over all table rows that represent holdings (have data-trades-id)
+            document.querySelectorAll('tbody tr[data-trades-id]').forEach(row => {
+                // Add each row's total cost to the cumulative total
+                totalCost += parseFloat(row.dataset.totalCost || 0);
+    
+                // Try to find the element containing the current value for each holding
+                const valueEl = row.querySelector('[data-field="current_value"] span');
+                if (valueEl) {
+                    // Add current value from the element's data attribute (raw value)
+                    totalValue += parseFloat(valueEl.dataset.raw || 0);
+                }
+            });
+
+            // Calculate unrealized profit/loss
+            const unrealizedPl = totalValue - totalCost;
+
+            // Calculate P/L percentage (avoid division by zero)
+            const plPercentage = totalCost > 0 ? ((unrealizedPl / totalCost) * 100).toFixed(2) : 0;
+
+            // Return all totals as an object
+            return { totalCost, totalValue, unrealizedPl, plPercentage };
+        }
+    
+        // Updates the portfolio summary cards at the top (total value, P/L, percent)
+        function updatePortfolioSummary(totals) {
+            // Determine if the portfolio is positive or negative based on P/L
+            const positive = totals.unrealizedPl >= 0;
+    
+            // Update total value text
+            document.getElementById('dashboard-total-value').textContent =
+                `Rs. ${totals.totalValue.toFixed(2)}`;
+    
+            // Update Unrealized P/L text and color (green/red)
+            const plEl = document.getElementById('dashboard-unrealized-pl');
+            plEl.textContent = `Rs. ${totals.unrealizedPl.toFixed(2)}`;
+            plEl.className = positive ? 'pl-positive' : 'pl-negative';
+    
+            // Update P/L percentage text and color (green/red)
+            const percentEl = document.getElementById('dashboard-pl-percentage');
+            percentEl.textContent = `${totals.plPercentage}%`;
+            percentEl.className = positive ? 'pl-positive' : 'pl-negative';
+        }
+    
+        // Updates a single row in the holdings table when new price data is fetched
+        function updateHoldingRow(row, stockData) {
+            // Get the number of shares held
+            const qty = parseFloat(row.dataset.quantity);
+            // Get the total cost basis for the holding
+            const cost = parseFloat(row.dataset.totalCost);
+            // Get the most up-to-date stock price from the returned stockData
+            const newPrice = parseFloat(stockData.current_price);
+    
+            // If the new price is missing or zero, don't update the row
+            if (!newPrice) return;
+    
+            // Retrieve the last price recorded for this row from its data attribute
+            const oldPrice = parseFloat(row.dataset.lastPrice || 0);
+            // Store the new price as lastPrice for future comparisons
+            row.dataset.lastPrice = newPrice;
+    
+            // Calculate the new current value and unrealized profit/loss of the holding
+            const currentValue = qty * newPrice;
+            const unrealizedPl = currentValue - cost;
+            // Positive (true) means profit, Negative (false) means loss
+            const positive = unrealizedPl >= 0;
+    
+            // Determine whether to "flash" the price cell green (up) or red (down)
+            const flashClass =
+                newPrice > oldPrice ? 'flash-green' :
+                newPrice < oldPrice ? 'flash-red' : '';
+    
+            // Update the CURRENT PRICE cell with colored value and optional flash
+            const priceEl = row.querySelector('[data-field="current_price"]');
+            priceEl.innerHTML = `<span class="${positive ? 'pl-positive' : 'pl-negative'}">
+                Rs. ${newPrice.toFixed(2)}</span>`;
+            if (flashClass) {
+                // Add the flash class and remove after a short delay for animation
+                priceEl.classList.add(flashClass);
+                setTimeout(() => priceEl.classList.remove(flashClass), 800);
+            }
+    
+            // Update the CURRENT VALUE cell and store the raw value in a data attribute
+            const valueEl = row.querySelector('[data-field="current_value"]');
+            valueEl.innerHTML = `<span class="${positive ? 'pl-positive' : 'pl-negative'}"
+                data-raw="${currentValue}">
+                Rs. ${currentValue.toFixed(2)}</span>`;
+    
+            // Update the UNREALIZED P/L cell with colored value
+            row.querySelector('[data-field="unrealized_pl"]').innerHTML =
+                `<span class="${positive ? 'pl-positive' : 'pl-negative'}">
+                Rs. ${unrealizedPl.toFixed(2)}</span>`;
+    
+            // Calculate percentage P/L and update cell with colored value
+            const percent = cost > 0 ? ((unrealizedPl / cost) * 100).toFixed(2) : 0;
+            row.querySelector('[data-field="pl_percent"]').innerHTML =
+                `<span class="${positive ? 'pl-positive' : 'pl-negative'}">
+                ${percent}%</span>`;
+        }
+    
+        // Fetches the latest quote data for all stocks in the portfolio
+        function refreshPortfolioData() {
+            // Prevent starting if a previous refresh is still in progress
+            if (isRefreshing) return;
+            isRefreshing = true;
+    
+            // Build a list of stock IDs present in the table
+            const ids = [...document.querySelectorAll('tr[data-stock-id]')]
+                .map(r => r.dataset.stockId);
+    
+            // Make AJAX request to the backend for latest prices of all stocks
+            fetch(`/api/stocks/refresh/?ids=${ids.join(',')}`)
+                .then(r => r.json()) // Parse JSON response
+                .then(data => {
+                    // If backend indicates failure, stop
+                    if (!data.success) return;
+    
+                    // Build a map from stock id -> stock data for quick lookup
+                    const map = {};
+                    data.stocks.forEach(s => map[s.id] = s);
+    
+                    // Update each row with new price data
+                    document.querySelectorAll('tr[data-stock-id]').forEach(row => {
+                        const stock = map[row.dataset.stockId];
+                        if (stock) updateHoldingRow(row, stock);
+                    });
+    
+                    // Also update the portfolio summary cards
+                    updatePortfolioSummary(calculatePortfolioTotals());
+                })
+                .finally(() => isRefreshing = false); // Always unset the flag afterwards
+        }
+    
+        // Initial delayed refresh to give the page time to render (5 seconds after load)
+        setTimeout(refreshPortfolioData, 5000);
+        // Then refresh every 30 seconds on an interval
+        refreshInterval = setInterval(refreshPortfolioData, 30000);
+    });
+    </script>
+    
+{% endblock %}

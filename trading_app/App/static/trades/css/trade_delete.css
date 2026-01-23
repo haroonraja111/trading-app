@@ -1,0 +1,13 @@
+body {
+    background-color: #f3f4f6;
+    font-family: 'Inter', sans-serif;
+    /* padding: 20px; */
+}
+.delete-confirm-container {
+    max-width: 500px;
+    margin: 40px auto;
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}

@@ -1,0 +1,214 @@
+{% extends "App/base.html" %}
+{% load static %}
+{% comment %} stock_form.html {% endcomment %}
+{% block title %}{% if is_update %}Edit Stock{% else %}Add Stock{% endif %}{% endblock %}
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'stocks/css/stock_form.css' %}">
+{% endblock %}
+{% block content %}
+<div class="stock-modal shadow">
+    <div class="stock-modal-header">
+        <h1 class="stock-title">{% if is_update %}Edit Stock{% else %}Add Stock{% endif %}</h1>
+        <!-- Add a close button if needed in modal context -->
+    </div>
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+        
+        <!-- Display non-field errors if any -->
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-3">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+        
+        <!-- SYMBOL & NAME -->
+        <div class="flex-row">
+            <div class="flex-col" style="max-width:220px;">
+                <label class="form-label" for="{{ form.symbol.id_for_label }}">Stock Symbol <span style="color:#1d4ed8">*</span></label>
+                {{ form.symbol }}
+                {% if form.symbol.errors %}
+                    <div class="errorlist">{{ form.symbol.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="flex-col" style="min-width: 210px;">
+                <label class="form-label" for="{{ form.name.id_for_label }}">Stock Name <span style="color:#1d4ed8">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <div class="errorlist">{{ form.name.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- PRICE & RSI -->
+        <div class="flex-row">
+            <div class="flex-col">
+                <label class="form-label" for="{{ form.current_price.id_for_label }}">Current Price <span style="color:#1d4ed8">*</span></label>
+                {{ form.current_price }}
+                {% if form.current_price.errors %}
+                    <div class="errorlist">{{ form.current_price.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="flex-col">
+                <label class="form-label" for="{{ form.rsi.id_for_label }}">RSI</label>
+                {{ form.rsi }}
+                {% if form.rsi.errors %}
+                    <div class="errorlist">{{ form.rsi.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="targets-section-title mb-3">
+            <i class="fa-solid fa-chart-line"></i> Take Profit &amp; Stop Loss Targets
+        </div>
+        <!-- Take Profit Targets (TP1, TP2, TP3) -->
+        <div class="flex-row targets">
+            <div class="flex-col">
+                <label class="form-label small" for="{{ form.tp1.id_for_label }}"><span class="dot-green"></span>TP1</label>
+                {{ form.tp1 }}
+                {% if form.tp1.errors %}
+                    <div class="errorlist">{{ form.tp1.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="flex-col">
+                <label class="form-label small" for="{{ form.tp2.id_for_label }}"><span class="dot-green"></span>TP2</label>
+                {{ form.tp2 }}
+                {% if form.tp2.errors %}
+                    <div class="errorlist">{{ form.tp2.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="flex-col">
+                <label class="form-label small" for="{{ form.tp3.id_for_label }}"><span class="dot-green"></span>TP3</label>
+                {{ form.tp3 }}
+                {% if form.tp3.errors %}
+                    <div class="errorlist">{{ form.tp3.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Stop Loss Targets (SL1, SL2, SL3) -->
+        <div class="flex-row targets">
+            <div class="flex-col">
+                <label class="form-label small" for="{{ form.sl1.id_for_label }}"><span class="dot-red"></span>SL1</label>
+                {{ form.sl1 }}
+                {% if form.sl1.errors %}
+                    <div class="errorlist">{{ form.sl1.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="flex-col">
+                <label class="form-label small" for="{{ form.sl2.id_for_label }}"><span class="dot-red"></span>SL2</label>
+                {{ form.sl2 }}
+                {% if form.sl2.errors %}
+                    <div class="errorlist">{{ form.sl2.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="flex-col">
+                <label class="form-label small" for="{{ form.sl3.id_for_label }}"><span class="dot-red"></span>SL3</label>
+                {{ form.sl3 }}
+                {% if form.sl3.errors %}
+                    <div class="errorlist">{{ form.sl3.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Price Range -->
+        <div class="flex-row" style="margin-bottom: 2rem;">
+            <div class="flex-col">
+                <label class="form-label" for="{{ form.low.id_for_label }}">Price Low</label>
+                {{ form.low }}
+                {% if form.low.errors %}
+                    <div class="errorlist">{{ form.low.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="flex-col">
+                <label class="form-label" for="{{ form.high.id_for_label }}">Price High</label>
+                {{ form.high }}
+                {% if form.high.errors %}
+                    <div class="errorlist">{{ form.high.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-flex gap-3">
+            <button type="submit" class="btn btn-primary btn-primary-custom mt-2">
+                <i class="fa-solid fa-{% if is_update %}save{% else %}plus{% endif %} me-2"></i> {% if is_update %}Update Stock{% else %}Save Stock{% endif %}
+            </button>
+            <a href="{% url 'portfolio_dashboard' %}" class="btn btn-secondary mt-2" style="flex: 1; padding: 13px 10px; border-radius: 8px; background: #6c757d; color: #fff; text-decoration: none; text-align: center;">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Wait for the entire DOM to be loaded before running any JS
+    document.addEventListener("DOMContentLoaded", function () {
+        // Get the input element for the stock symbol
+        const symbolInput = document.getElementById("id_symbol");
+        // Get the input element for current price
+        const priceInput = document.getElementById("id_current_price");
+        // Get the input element for day's high price
+        const highInput  = document.getElementById("id_high");
+        // Get the input element for day's low price
+        const lowInput   = document.getElementById("id_low");
+        // Get the input element for the company name
+        const nameInput  = document.getElementById("id_name");
+
+        // If core elements are missing, do not proceed
+        if (!symbolInput || !priceInput) return;
+
+        // Async function to fetch the stock price and related info for the symbol
+        async function fetchPrice(symbol) {
+            try {
+                // Make a GET request to our backend endpoint with the provided symbol
+                const response = await fetch(`/stocks/fetch/?symbol=${symbol}`);
+                // Parse the returned JSON data
+                const data = await response.json();
+
+                // If the response is not OK (HTTP error), show an alert, clear price, and abort
+                if (!response.ok) {
+                    alert(data.error || "Failed to fetch stock price");
+                    priceInput.value = "";
+                    return;
+                }
+
+                // Write the current price (rounded to 2 decimals) to its input box
+                priceInput.value = Number(data.price).toFixed(2);
+
+                // If day's high and such a value exists, update it (rounded to 2 decimals)
+                if (highInput && data.high)
+                    highInput.value = Number(data.high).toFixed(2);
+
+                // If day's low and such a value exists, update it (rounded to 2 decimals)
+                if (lowInput && data.low)
+                    lowInput.value = Number(data.low).toFixed(2);
+
+                // If name comes from backend, set it
+                if (nameInput && data.name) {
+                    nameInput.value = data.name;
+                }
+            } catch (error) {
+                // Network or fetch failure: print error to DevTools and notify user
+                console.error("AJAX Error:", error);
+                alert("Network error while fetching stock price");
+            }
+        }
+
+        // Handler function to be called when symbol changes
+        function handleSymbolChange() {
+            // Get symbol, trim whitespace, and uppercase (as required by backend)
+            const symbol = symbolInput.value.trim().toUpperCase();
+            // Only fetch if symbol seems valid (at least 2 chars)
+            if (symbol.length >= 2) {
+                fetchPrice(symbol);
+            }
+        }
+
+        // When the symbol field loses focus, try fetching price info
+        symbolInput.addEventListener("blur", handleSymbolChange);
+        // When the symbol field changes (user types/pastes), try fetching price info
+        symbolInput.addEventListener("change", handleSymbolChange);
+
+    });
+</script>
+    
+    
+    
+    
+
+{% endblock %}
+{% block extra_body %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% endblock %}

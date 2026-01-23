@@ -1,0 +1,227 @@
+{% extends "App/base.html" %}
+{% load static %}
+{% comment %} stock_list.html {% endcomment %}
+{% block title %}Stocks{% endblock %}
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'stocks/css/stock_list.css' %}">
+   
+{% endblock %}
+{% block content %}
+
+<div class="stocks-table-container">
+    <div class="stocks-table-title">Stocks</div>
+    <table class="stocks-table">
+        <thead>
+        <tr>
+            <th>Symbol</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Change</th>
+            <th>Change %</th>
+            <th>Volume</th>
+            <th>High</th>
+            <th>Low</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for stock in stocks %}
+        <tr data-stock-id="{{ stock.pk }}" data-stock-symbol="{{ stock.symbol }}">
+            <td>{{ stock.symbol }}</td>
+            <td>{{ stock.name }}</td>
+            <td class="price-field" data-field="current_price">Rs. {{ stock.current_price|default:"0" }}</td>
+            <td class="price-field" data-field="change">{{ stock.change|default:"0" }}</td>
+            <td class="price-field" data-field="change_percent">{{ stock.change_percent|default:"0" }}%</td>
+            <td class="price-field" data-field="volume">{{ stock.volume|default:"0" }}</td>
+            <td class="price-field" data-field="high">{{ stock.high|default:"0" }}</td>
+            <td class="price-field" data-field="low">{{ stock.low|default:"0" }}</td>
+            <td>
+                <div class="stocks-actions">
+                    <a class="stocks-link" href="{% url 'stock_detail' stock.pk %}">View</a>
+                    <a class="stocks-link-edit" href="{% url 'stock_update' stock.pk %}">Edit</a>
+                    <a class="stocks-link-delete" href="{% url 'stock_delete' stock.pk %}">Delete</a>
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" style="text-align:center;color:#889;">
+                No stocks found.
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Pagination -->
+    {% if stocks.has_other_pages %}
+    <nav aria-label="Stock list pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if stocks.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ stocks.previous_page_number }}">Previous</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">First</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Previous</span>
+                </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">
+                    Page {{ stocks.number }} of {{ stocks.paginator.num_pages }}
+                </span>
+            </li>
+            
+            {% if stocks.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ stocks.next_page_number }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ stocks.paginator.num_pages }}">Last</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Next</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Last</span>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<script>
+    /**
+     * Auto-refresh stock prices every 30 seconds.
+     * Only updates price-related fields without reloading the page.
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        let refreshInterval = null;
+        let isRefreshing = false;
+        
+        /**
+         * Updates price fields in the table with new data
+         */
+        function updatePriceFields(stockData) {
+            const row = document.querySelector(`tr[data-stock-id="${stockData.id}"]`);
+            if (!row) return;
+            
+            // Helper to format numbers
+            const formatNumber = (value, decimals = 2) => {
+                if (value === null || value === undefined || value === '') return '0';
+                return Number(value).toFixed(decimals);
+            };
+            
+            // Update each price field
+            const fields = {
+                'current_price': (val) => `Rs. ${formatNumber(val)}`,
+                'change': (val) => formatNumber(val),
+                'change_percent': (val) => `${formatNumber(val)}%`,
+                'volume': (val) => val ? parseInt(val).toLocaleString() : '0',
+                'high': (val) => formatNumber(val),
+                'low': (val) => formatNumber(val),
+            };
+            
+            Object.keys(fields).forEach(fieldName => {
+                const cell = row.querySelector(`.price-field[data-field="${fieldName}"]`);
+                if (cell && stockData[fieldName] !== undefined && stockData[fieldName] !== null) {
+                    const oldValue = cell.textContent.trim();
+                    const newValue = fields[fieldName](stockData[fieldName]);
+                    
+                    if (oldValue !== newValue) {
+                        // Add visual feedback for changed values
+                        cell.style.transition = 'background-color 0.3s';
+                        cell.style.backgroundColor = '#d4edda';
+                        cell.textContent = newValue;
+                        
+                        // Remove highlight after 1 second
+                        setTimeout(() => {
+                            cell.style.backgroundColor = '';
+                        }, 1000);
+                    }
+                }
+            });
+        }
+        
+        /**
+         * Fetches updated prices for all stocks on the current page
+         */
+        function refreshStocksData() {
+            if (isRefreshing) return; // Prevent concurrent requests
+            isRefreshing = true;
+            
+            // Collect all stock IDs from the current page
+            const stockRows = document.querySelectorAll('.stocks-table tbody tr[data-stock-id]');
+            const stockIds = Array.from(stockRows).map(row => row.getAttribute('data-stock-id'));
+            
+            if (stockIds.length === 0) {
+                isRefreshing = false;
+                return;
+            }
+            
+            // Build API URL with stock IDs
+            const apiUrl = `/api/stocks/refresh/?ids=${stockIds.join(',')}`;
+            
+            fetch(apiUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.stocks) {
+                    // Update each stock's price fields
+                    data.stocks.forEach(stock => {
+                        updatePriceFields(stock);
+                    });
+                    
+                    // Log errors if any
+                    if (data.errors && data.errors.length > 0) {
+                        console.warn('Some stocks could not be refreshed:', data.errors);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing stock prices:', error);
+                // Silently fail - don't disrupt user experience
+            })
+            .finally(() => {
+                isRefreshing = false;
+            });
+        }
+        
+        // Start auto-refresh: initial call after 5 seconds, then every 30 seconds
+        setTimeout(refreshStocksData, 5000);
+        refreshInterval = setInterval(refreshStocksData, 30000);
+        
+        // Clean up interval when page is hidden (optional optimization)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            } else {
+                if (!refreshInterval) {
+                    refreshInterval = setInterval(refreshStocksData, 30000);
+                    refreshStocksData(); // Refresh immediately when page becomes visible
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

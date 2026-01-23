@@ -1,0 +1,215 @@
+{% extends "App/base.html" %}
+{% load static %}
+{% comment %} stock_detail.html {% endcomment %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'stocks/css/stock_detail.css' %}">
+<div class="stock-detail-container" data-stock-id="{{ object.pk }}" data-stock-symbol="{{ object.symbol }}">
+    <h3>{{ object.symbol|default:"—" }}{% if object.name %} - {{ object.name }}{% endif %}</h3>
+    <ul class="stock-details-list">
+        <li>
+            <span class="stock-detail-label">Current Price:</span>
+            <span class="stock-detail-value price-field" data-field="current_price">
+                {% if object.current_price is not None %}
+                    Rs. {{ object.current_price }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">RSI:</span>
+            <span class="stock-detail-value">
+                {% if object.rsi is not None %}
+                    {{ object.rsi }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">TP1:</span>
+            <span class="stock-detail-value">
+                {% if object.tp1 %}
+                    Rs. {{ object.tp1 }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">TP2:</span>
+            <span class="stock-detail-value">
+                {% if object.tp2 %}
+                    Rs. {{ object.tp2 }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">TP3:</span>
+            <span class="stock-detail-value">
+                {% if object.tp3 %}
+                    Rs. {{ object.tp3 }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">SL1:</span>
+            <span class="stock-detail-value">
+                {% if object.sl1 %}
+                    Rs. {{ object.sl1 }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">SL2:</span>
+            <span class="stock-detail-value">
+                {% if object.sl2 %}
+                    Rs. {{ object.sl2 }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">SL3:</span>
+            <span class="stock-detail-value">
+                {% if object.sl3 %}
+                    Rs. {{ object.sl3 }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">Low:</span>
+            <span class="stock-detail-value price-field" data-field="low">
+                {% if object.low is not None %}
+                    Rs. {{ object.low }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+        <li>
+            <span class="stock-detail-label">High:</span>
+            <span class="stock-detail-value price-field" data-field="high">
+                {% if object.high is not None %}
+                    Rs. {{ object.high }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </li>
+    </ul>
+</div>
+
+<script>
+    /**
+     * Auto-refresh stock price every 30 seconds for stock detail page.
+     * Only updates price-related fields without reloading the page.
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.querySelector('.stock-detail-container[data-stock-id]');
+        if (!container) return;
+        
+        const stockId = container.getAttribute('data-stock-id');
+        let refreshInterval = null;
+        let isRefreshing = false;
+        
+        /**
+         * Updates price fields with new data
+         */
+        function updatePriceFields(stockData) {
+            const formatNumber = (value, decimals = 2) => {
+                if (value === null || value === undefined || value === '') return '—';
+                return Number(value).toFixed(decimals);
+            };
+            
+            const fields = {
+                'current_price': (val) => val !== null && val !== undefined ? `Rs. ${formatNumber(val)}` : '—',
+                'high': (val) => val !== null && val !== undefined ? `Rs. ${formatNumber(val)}` : '—',
+                'low': (val) => val !== null && val !== undefined ? `Rs. ${formatNumber(val)}` : '—',
+            };
+            
+            Object.keys(fields).forEach(fieldName => {
+                const element = container.querySelector(`.price-field[data-field="${fieldName}"]`);
+                if (element && stockData[fieldName] !== undefined) {
+                    const oldValue = element.textContent.trim();
+                    const newValue = fields[fieldName](stockData[fieldName]);
+                    
+                    if (oldValue !== newValue) {
+                        // Add visual feedback for changed values
+                        element.style.transition = 'background-color 0.3s';
+                        element.style.backgroundColor = '#d4edda';
+                        element.textContent = newValue;
+                        
+                        // Remove highlight after 1 second
+                        setTimeout(() => {
+                            element.style.backgroundColor = '';
+                        }, 1000);
+                    }
+                }
+            });
+        }
+        
+        /**
+         * Fetches updated price for the current stock
+         */
+        function refreshStockData() {
+            if (isRefreshing) return;
+            isRefreshing = true;
+            
+            const apiUrl = `/api/stocks/refresh/?ids=${stockId}`;
+            
+            fetch(apiUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.stocks && data.stocks.length > 0) {
+                    updatePriceFields(data.stocks[0]);
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing stock price:', error);
+            })
+            .finally(() => {
+                isRefreshing = false;
+            });
+        }
+        
+        // Start auto-refresh: initial call after 5 seconds, then every 30 seconds
+        setTimeout(refreshStockData, 5000);
+        refreshInterval = setInterval(refreshStockData, 30000);
+        
+        // Clean up interval when page is hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            } else {
+                if (!refreshInterval) {
+                    refreshInterval = setInterval(refreshStockData, 30000);
+                    refreshStockData(); // Refresh immediately when page becomes visible
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
